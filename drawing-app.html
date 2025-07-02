@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>어린이 그림판</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #2c2c2c;
+            color: white;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 왼쪽 도구 패널 */
+        .toolbar {
+            width: 60px;
+            background-color: #1e1e1e;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            padding: 10px 5px;
+            gap: 5px;
+        }
+
+        .tool-btn {
+            width: 50px;
+            height: 50px;
+            background-color: #3a3a3a;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background-color: #4a4a4a;
+        }
+
+        .tool-btn.active {
+            background-color: #0078d4;
+        }
+
+        /* 메인 작업 영역 */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 상단 옵션 바 */
+        .options-bar {
+            height: 60px;
+            background-color: #333;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-label {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #000;
+        }
+
+        .size-slider {
+            width: 100px;
+            height: 30px;
+            background-color: #555;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        .size-display {
+            width: 30px;
+            height: 30px;
+            background-color: #000;
+            border-radius: 50%;
+            border: 2px solid #666;
+        }
+
+        /* 캔버스 영역 */
+        .canvas-area {
+            flex: 1;
+            background-color: #404040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #canvas {
+            background-color: white;
+            border: 2px solid #666;
+            border-radius: 5px;
+            cursor: crosshair;
+        }
+
+        /* 색상 팔레트 */
+        .color-palette {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            max-width: 300px;
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #666;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #fff;
+            border-width: 3px;
+        }
+
+        /* 액션 버튼들 */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: #106ebe;
+        }
+
+        .action-btn:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+
+        /* 도구 설명 툴팁 */
+        .tooltip {
+            position: absolute;
+            background-color: #000;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 왼쪽 도구 패널 -->
+        <div class="toolbar">
+            <button class="tool-btn active" data-tool="brush" title="브러시">🖌️</button>
+            <button class="tool-btn" data-tool="eraser" title="지우개">🧽</button>
+            <button class="tool-btn" data-tool="line" title="직선">📏</button>
+            <button class="tool-btn" data-tool="rectangle" title="사각형">⬜</button>
+            <button class="tool-btn" data-tool="circle" title="원">⭕</button>
+            <button class="tool-btn" data-tool="bucket" title="채우기">🪣</button>
+        </div>
+
+        <!-- 메인 작업 영역 -->
+        <div class="main-area">
+            <!-- 상단 옵션 바 -->
+            <div class="options-bar">
+                <!-- 색상 선택 -->
+                <div class="option-group">
+                    <span class="option-label">색상:</span>
+                    <input type="color" class="color-picker" id="colorPicker" value="#000000">
+                </div>
+
+                <!-- 색상 팔레트 -->
+                <div class="color-palette">
+                    <div class="color-btn active" style="background-color: #000000" data-color="#000000"></div>
+                    <div class="color-btn" style="background-color: #ff0000" data-color="#ff0000"></div>
+                    <div class="color-btn" style="background-color: #00ff00" data-color="#00ff00"></div>
+                    <div class="color-btn" style="background-color: #0000ff" data-color="#0000ff"></div>
+                    <div class="color-btn" style="background-color: #ffff00" data-color="#ffff00"></div>
+                    <div class="color-btn" style="background-color: #ff00ff" data-color="#ff00ff"></div>
+                    <div class="color-btn" style="background-color: #00ffff" data-color="#00ffff"></div>
+                    <div class="color-btn" style="background-color: #ffffff" data-color="#ffffff"></div>
+                    <div class="color-btn" style="background-color: #808080" data-color="#808080"></div>
+                    <div class="color-btn" style="background-color: #800000" data-color="#800000"></div>
+                    <div class="color-btn" style="background-color: #008000" data-color="#008000"></div>
+                    <div class="color-btn" style="background-color: #000080" data-color="#000080"></div>
+                </div>
+
+                <!-- 브러시 크기 -->
+                <div class="option-group">
+                    <span class="option-label">크기:</span>
+                    <input type="range" class="size-slider" id="sizeSlider" min="1" max="50" value="5">
+                    <div class="size-display" id="sizeDisplay"></div>
+                </div>
+
+                <!-- 액션 버튼들 -->
+                <div class="action-buttons">
+                    <button class="action-btn" id="undoBtn" disabled title="되돌리기">↶</button>
+                    <button class="action-btn" id="redoBtn" disabled title="다시하기">↷</button>
+                    <button class="action-btn" id="clearBtn" title="전체 지우기">🗑️</button>
+                    <button class="action-btn" id="saveBtn" title="저장하기">💾</button>
+                </div>
+            </div>
+
+            <!-- 캔버스 영역 -->
+            <div class="canvas-area">
+                <canvas id="canvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 툴팁 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        class DrawingApp {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isDrawing = false;
+                this.currentTool = 'brush';
+                this.currentColor = '#000000';
+                this.currentSize = 5;
+                this.startX = 0;
+                this.startY = 0;
+                
+                // 실행 취소/다시하기를 위한 히스토리
+                this.history = [];
+                this.historyIndex = -1;
+                this.maxHistory = 50;
+                
+                this.initializeCanvas();
+                this.setupEventListeners();
+                this.saveState();
+            }
+
+            initializeCanvas() {
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            setupEventListeners() {
+                // 도구 선택
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelector('.tool-btn.active').classList.remove('active');
+                        btn.classList.add('active');
+                        this.currentTool = btn.dataset.tool;
+                        this.updateCursor();
+                    });
+                });
+
+                // 색상 선택
+                document.getElementById('colorPicker').addEventListener('change', (e) => {
+                    this.currentColor = e.target.value;
+                    this.updateColorPalette();
+                });
+
+                // 색상 팔레트
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const color = btn.dataset.color;
+                        this.currentColor = color;
+                        document.getElementById('colorPicker').value = color;
+                        this.updateColorPalette();
+                    });
+                });
+
+                // 브러시 크기
+                document.getElementById('sizeSlider').addEventListener('input', (e) => {
+                    this.currentSize = e.target.value;
+                    this.updateSizeDisplay();
+                });
+
+                // 캔버스 이벤트
+                this.canvas.addEventListener('mousedown', this.startDrawing.bind(this));
+                this.canvas.addEventListener('mousemove', this.draw.bind(this));
+                this.canvas.addEventListener('mouseup', this.stopDrawing.bind(this));
+                this.canvas.addEventListener('mouseout', this.stopDrawing.bind(this));
+
+                // 액션 버튼들
+                document.getElementById('undoBtn').addEventListener('click', this.undo.bind(this));
+                document.getElementById('redoBtn').addEventListener('click', this.redo.bind(this));
+                document.getElementById('clearBtn').addEventListener('click', this.clearCanvas.bind(this));
+                document.getElementById('saveBtn').addEventListener('click', this.saveImage.bind(this));
+
+                // 툴팁
+                document.querySelectorAll('[title]').forEach(element => {
+                    element.addEventListener('mouseenter', this.showTooltip.bind(this));
+                    element.addEventListener('mouseleave', this.hideTooltip.bind(this));
+                });
+
+                // 초기 상태 설정
+                this.updateSizeDisplay();
+                this.updateColorPalette();
+            }
+
+            updateCursor() {
+                if (this.currentTool === 'eraser') {
+                    this.canvas.style.cursor = 'crosshair';
+                } else {
+                    this.canvas.style.cursor = 'crosshair';
+                }
+            }
+
+            updateColorPalette() {
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.color === this.currentColor) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+
+            updateSizeDisplay() {
+                const display = document.getElementById('sizeDisplay');
+                display.style.width = this.currentSize + 'px';
+                display.style.height = this.currentSize + 'px';
+                display.style.backgroundColor = this.currentColor;
+            }
+
+            getMousePos(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            startDrawing(e) {
+                this.isDrawing = true;
+                const pos = this.getMousePos(e);
+                this.startX = pos.x;
+                this.startY = pos.y;
+
+                if (this.currentTool === 'brush') {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(pos.x, pos.y);
+                } else if (this.currentTool === 'bucket') {
+                    this.floodFill(pos.x, pos.y);
+                    this.saveState();
+                }
+            }
+
+            draw(e) {
+                if (!this.isDrawing) return;
+
+                const pos = this.getMousePos(e);
+                this.ctx.lineWidth = this.currentSize;
+
+                if (this.currentTool === 'brush') {
+                    this.ctx.globalCompositeOperation = 'source-over';
+                    this.ctx.strokeStyle = this.currentColor;
+                    this.ctx.lineTo(pos.x, pos.y);
+                    this.ctx.stroke();
+                } else if (this.currentTool === 'eraser') {
+                    this.ctx.globalCompositeOperation = 'destination-out';
+                    this.ctx.beginPath();
+                    this.ctx.arc(pos.x, pos.y, this.currentSize / 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+            }
+
+            stopDrawing(e) {
+                if (!this.isDrawing) return;
+                this.isDrawing = false;
+
+                const pos = this.getMousePos(e);
+
+                if (this.currentTool === 'line') {
+                    this.ctx.globalCompositeOperation = 'source-over';
+                    this.ctx.strokeStyle = this.currentColor;
+                    this.ctx.lineWidth = this.currentSize;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.startX, this.startY);
+                    this.ctx.lineTo(pos.x, pos.y);
+                    this.ctx.stroke();
+                } else if (this.currentTool === 'rectangle') {
+                    this.drawRectangle(this.startX, this.startY, pos.x, pos.y);
+                } else if (this.currentTool === 'circle') {
+                    this.drawCircle(this.startX, this.startY, pos.x, pos.y);
+                }
+
+                this.saveState();
+            }
+
+            drawRectangle(x1, y1, x2, y2) {
+                this.ctx.globalCompositeOperation = 'source-over';
+                this.ctx.strokeStyle = this.currentColor;
+                this.ctx.lineWidth = this.currentSize;
+                this.ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            }
+
+            drawCircle(x1, y1, x2, y2) {
+                const radius = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                this.ctx.globalCompositeOperation = 'source-over';
+                this.ctx.strokeStyle = this.currentColor;
+                this.ctx.lineWidth = this.currentSize;
+                this.ctx.beginPath();
+                this.ctx.arc(x1, y1, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            floodFill(x, y) {
+                // 간단한 채우기 구현 (실제로는 더 복잡한 알고리즘이 필요)
+                this.ctx.fillStyle = this.currentColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            saveState() {
+                this.historyIndex++;
+                if (this.historyIndex < this.history.length) {
+                    this.history.length = this.historyIndex;
+                }
+                this.history.push(this.canvas.toDataURL());
+                if (this.history.length > this.maxHistory) {
+                    this.history.shift();
+                    this.historyIndex--;
+                }
+                this.updateUndoRedoButtons();
+            }
+
+            undo() {
+                if (this.historyIndex > 0) {
+                    this.historyIndex--;
+                    this.restoreState();
+                }
+            }
+
+            redo() {
+                if (this.historyIndex < this.history.length - 1) {
+                    this.historyIndex++;
+                    this.restoreState();
+                }
+            }
+
+            restoreState() {
+                const img = new Image();
+                img.onload = () => {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.drawImage(img, 0, 0);
+                };
+                img.src = this.history[this.historyIndex];
+                this.updateUndoRedoButtons();
+            }
+
+            updateUndoRedoButtons() {
+                document.getElementById('undoBtn').disabled = this.historyIndex <= 0;
+                document.getElementById('redoBtn').disabled = this.historyIndex >= this.history.length - 1;
+            }
+
+            clearCanvas() {
+                if (confirm('정말로 모든 그림을 지우시겠습니까?')) {
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.saveState();
+                }
+            }
+
+            saveImage() {
+                const link = document.createElement('a');
+                link.download = '내그림_' + new Date().toISOString().slice(0, 10) + '.png';
+                link.href = this.canvas.toDataURL();
+                link.click();
+            }
+
+            showTooltip(e) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.textContent = e.target.title;
+                tooltip.style.left = e.pageX + 10 + 'px';
+                tooltip.style.top = e.pageY - 30 + 'px';
+                tooltip.classList.add('show');
+            }
+
+            hideTooltip() {
+                document.getElementById('tooltip').classList.remove('show');
+            }
+        }
+
+        // 앱 시작
+        window.addEventListener('load', () => {
+            new DrawingApp();
+        });
+    </script>
+</body>
+</html>
